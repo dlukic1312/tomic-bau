@@ -5,7 +5,7 @@ const { chromium } = require('playwright');
   for (const width of [375, 390, 768, 1280, 1440]) {
     const page = await browser.newPage({ viewport: { width, height: 900 }, deviceScaleFactor: 1 });
     page.on('pageerror', e => errors.push(width + 'px JS: ' + e.message));
-    await page.goto('http://127.0.0.1:8765/', { waitUntil: 'load' });
+    await page.goto((process.env.GOVERNANCE_BROWSER_ROOT || 'http://127.0.0.1:8765/'), { waitUntil: 'load' });
     await page.locator('h1').waitFor();
     const result = await page.evaluate(() => ({
       documentWidth: document.documentElement.scrollWidth,
