@@ -11,3 +11,5 @@ jobs:
       - run: python3 scripts/check_site.py
       - run: python3 scripts/stage_pages.py
       - run: test -f _site/index.html && test ! -e _site/AGENTS.md && test ! -e _site/scripts
+      - name: Compare live public paths with staged candidate
+        run: python3 scripts/check_live_baseline.py
