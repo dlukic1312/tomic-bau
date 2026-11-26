@@ -4,7 +4,7 @@ permissions:
   contents: read
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - run: base64 --decode assets/approved-header.png.base64 > assets/approved-header.png
