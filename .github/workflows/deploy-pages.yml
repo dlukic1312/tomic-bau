@@ -60,12 +60,14 @@ jobs:
           /tmp/tomic-playwright/node_modules/.bin/playwright install chromium --with-deps
           python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/tomic-http.log 2>&1 &
           NODE_PATH=/tmp/tomic-playwright/node_modules node scripts/check_browser.cjs
+      - name: Stage approved public files
+        run: python3 scripts/stage_pages.py
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4

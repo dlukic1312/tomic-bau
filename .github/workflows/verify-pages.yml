@@ -1,0 +1,33 @@
+name: Verify public artifact
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: fd4a874fd790b40e2e7bfe3e94cea7e90dbf9545
+          path: baseline-source
+      - run: base64 --decode assets/approved-header.png.base64 > assets/approved-header.png
+      - run: python3 scripts/check_site.py
+      - run: python3 scripts/stage_pages.py
+      - run: test -f _site/index.html && test ! -e _site/AGENTS.md && test ! -e _site/scripts
+      - name: Compare live public paths with staged candidate
+        run: python3 scripts/check_live_baseline.py
+      - name: Browser smoke tests against staged artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix /tmp/governance-playwright --no-audit --no-fund playwright@1.58.2
+          /tmp/governance-playwright/node_modules/.bin/playwright install chromium --with-deps
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory _site >/tmp/staged-http.log 2>&1 &
+          trap 'kill $! 2>/dev/null || true' EXIT
+          for i in {1..20}; do curl -fsS http://127.0.0.1:8765/index.html >/dev/null && break; sleep 1; done
+          NODE_PATH=/tmp/governance-playwright/node_modules node scripts/check_staged_browser.cjs
+          base64 --decode baseline-source/assets/approved-header.png.base64 > baseline-source/assets/approved-header.png
+          python3 -m http.server 8766 --bind 127.0.0.1 --directory baseline-source >/tmp/baseline-http.log 2>&1 &
+          for i in {1..20}; do curl -fsS http://127.0.0.1:8766/index.html >/dev/null && break; sleep 1; done
+          NODE_PATH=/tmp/governance-playwright/node_modules python3 scripts/compare_browser.py
