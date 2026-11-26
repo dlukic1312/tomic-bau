@@ -1,0 +1,13 @@
+name: Verify public artifact
+on: [pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: base64 --decode assets/approved-header.png.base64 > assets/approved-header.png
+      - run: python3 scripts/check_site.py
+      - run: python3 scripts/stage_pages.py
+      - run: test -f _site/index.html && test ! -e _site/AGENTS.md && test ! -e _site/scripts
