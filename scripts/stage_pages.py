@@ -27,6 +27,10 @@ def stage():
         src = ROOT / entry
         if not src.is_file() or any((ROOT / Path(*p.parts[:i])).is_symlink() for i in range(1,len(p.parts)+1)):
             raise ValueError("Missing or linked file: " + entry)
+    public_types = {".html", ".css", ".js", ".json", ".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico", ".txt", ".xml", ".woff", ".woff2"}
+    for source in sorted(ROOT.iterdir()):
+        if source.is_file() and (source.suffix.lower() in public_types or source.name == "CNAME") and source.name not in entries:
+            print("WARNING: unlisted potential public file (review manifest intentionally): " + source.name)
     with tempfile.TemporaryDirectory(dir=ROOT) as temp:
         dest = Path(temp) / "site"
         dest.mkdir()
