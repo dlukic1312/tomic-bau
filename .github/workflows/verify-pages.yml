@@ -11,12 +11,20 @@ jobs:
         with:
           ref: fd4a874fd790b40e2e7bfe3e94cea7e90dbf9545
           path: baseline-source
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: production-source
       - run: base64 --decode assets/approved-header.png.base64 > assets/approved-header.png
       - run: python3 scripts/check_site.py
       - run: python3 scripts/stage_pages.py
       - run: test -f _site/index.html && test ! -e _site/AGENTS.md && test ! -e _site/scripts
-      - name: Compare live public paths with staged candidate
-        run: python3 scripts/check_live_baseline.py
+      - name: Compare live public paths with the staged base branch
+        run: |
+          cd production-source
+          base64 --decode assets/approved-header.png.base64 > assets/approved-header.png
+          python3 scripts/stage_pages.py
+          python3 ../scripts/check_live_baseline.py .
       - name: Browser smoke tests against staged artifact
         shell: bash
         run: |

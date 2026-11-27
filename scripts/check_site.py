@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
-"""Static checks for the TOMIC BAU GitHub Pages preview.
+"""Static checks for the TOMIC BAU GitHub Pages website.
 
 Run after the approved header image is generated in the deployment workflow.
 No network access or third-party dependencies required.
 """
 from html.parser import HTMLParser
 from pathlib import Path
-import re
 import sys
+from xml.etree import ElementTree
 
 ROOT = Path(__file__).resolve().parents[1]
 PAGES = ["index.html", "asphaltbau.html", "kabelbau.html", "impressum.html", "datenschutz.html"]
+ORIGIN = "https://tomic-bau.de"
+CANONICALS = {
+    "index.html": ORIGIN + "/",
+    "asphaltbau.html": ORIGIN + "/asphaltbau.html",
+    "kabelbau.html": ORIGIN + "/kabelbau.html",
+}
 errors = []
 
 class PageParser(HTMLParser):
@@ -22,6 +28,7 @@ class PageParser(HTMLParser):
         self.has_description = False
         self.has_title = False
         self.has_lang = False
+        self.canonicals, self.robots = [], []
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
         if tag == "html":
@@ -32,6 +39,10 @@ class PageParser(HTMLParser):
             self.has_title = True
         if self.in_head and tag == "meta" and a.get("name") == "description":
             self.has_description = bool(a.get("content"))
+        if self.in_head and tag == "link" and a.get("rel") == "canonical":
+            self.canonicals.append(a.get("href"))
+        if self.in_head and tag == "meta" and a.get("name", "").lower() in {"robots", "googlebot"}:
+            self.robots.extend(a.get("content", "").lower().replace(",", " ").split())
         if "id" in a:
             self.ids.append(a["id"])
         if tag == "a":
@@ -87,13 +98,30 @@ for filename in PAGES:
                 errors.append(f"{filename}: missing link {href}")
         if attrs.get("target") == "_blank" and "noopener" not in attrs.get("rel", ""):
             errors.append(f"{filename}: target=_blank without noopener ({href})")
+    if filename in CANONICALS:
+        if parser.canonicals != [CANONICALS[filename]]:
+            errors.append(f"{filename}: missing or incorrect canonical URL")
+        if {"noindex", "none", "nofollow"}.intersection(parser.robots):
+            errors.append(f"{filename}: public page restricts search indexing or crawling")
+        if not parser.has_description:
+            errors.append(f"{filename}: missing search description")
     if filename == "index.html":
-        if '<meta name="robots" content="noindex,nofollow"' not in src:
-            errors.append("Preview index must remain noindex until official domain launch")
         for text in ("Asphalt- und Kabelbau<br/>aus Kirchzarten", "Kabelbau &amp; Glasfaser", "Langjährige Erfahrung", "Pflaster-, Wege- &amp; Stützwandbau", "impressum.html", "datenschutz.html", "tel:+4915730993989"):
             if text not in src:
                 errors.append(f"index.html: required content missing: {text}")
     print(f"Checked {filename}: {len(parser.links)} links, {len(parser.images)} images, {len(parser.ids)} IDs")
+
+try:
+    sitemap = ElementTree.parse(ROOT / "sitemap.xml")
+    namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    locations = [node.text for node in sitemap.findall("sm:url/sm:loc", namespace)]
+    if sorted(locations) != sorted(CANONICALS.values()):
+        errors.append("Sitemap must list each indexable canonical URL once")
+    robots = (ROOT / "robots.txt").read_text(encoding="utf-8")
+    if robots.splitlines() != ["User-agent: *", "Allow: /", f"Sitemap: {ORIGIN}/sitemap.xml"]:
+        errors.append("robots.txt must allow crawling and advertise the production sitemap")
+except (OSError, ElementTree.ParseError) as exc:
+    errors.append(f"Cannot read SEO files: {exc}")
 
 if errors:
     print("\nFAIL:\n" + "\n".join(" - " + e for e in errors))
