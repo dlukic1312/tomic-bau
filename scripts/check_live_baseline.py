@@ -1,13 +1,14 @@
-"""Check public baseline and candidate byte compatibility without deployment."""
+"""Check live public files against the staged base branch without deployment."""
 import hashlib
 import json
+import sys
 import urllib.request
 from pathlib import Path
 from urllib.parse import quote
 
-root = Path(__file__).resolve().parents[1]
+root = Path(sys.argv[1]).resolve()
 manifest = json.loads((root / "publish-manifest.json").read_text())
-base = "https://dlukic1312.github.io/tomic-bau/"
+base = "https://tomic-bau.de/"
 failures = []
 for name in manifest:
     url = base + quote(name, safe="/")
@@ -18,7 +19,7 @@ for name in manifest:
                 raise ValueError(f"HTTP {response.status}")
             expected = (root / "_site" / name).read_bytes()
             if hashlib.sha256(data).digest() != hashlib.sha256(expected).digest():
-                raise ValueError("live bytes differ from candidate")
+                raise ValueError("live bytes differ from staged base branch")
         print("PASS", name)
     except Exception as exc:
         failures.append(name)
