@@ -10,7 +10,7 @@ def run(root):
     lines = [line.strip() for line in p.stderr.splitlines() if re.match(r"^(\d+px (horizontal overflow|broken images|JS):|\d+px menu |Filter shows|Reference image modal)",line)]
     if p.returncode and not lines:
         raise RuntimeError("Browser infrastructure or unexpected test failure")
-    return set(lines)
+    return {line.replace(root, "<site>/") for line in lines}
 
 baseline=run("http://127.0.0.1:8766/")
 candidate=run("http://127.0.0.1:8765/")

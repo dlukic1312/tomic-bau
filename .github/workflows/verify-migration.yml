@@ -1,0 +1,30 @@
+name: Explicit unchanged governance migration verification
+# Manual audit only: legitimate content PRs never compare candidate bytes to old live content.
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_revision:
+        description: Full approved candidate commit SHA
+        required: true
+      baseline_revision:
+        description: Full pre-migration baseline commit SHA
+        required: true
+permissions:
+  contents: read
+jobs:
+  unchanged-migration:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.candidate_revision }}
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.baseline_revision }}
+          path: baseline-source
+      - run: base64 --decode assets/approved-header.png.base64 > assets/approved-header.png
+      - run: base64 --decode baseline-source/assets/approved-header.png.base64 > baseline-source/assets/approved-header.png
+      - run: python3 scripts/stage_pages.py
+      - run: python3 scripts/check_staged.py --write-inventory "${{ runner.temp }}/approved-public-inventory.json"
+      - name: Require unchanged public inventory and bytes, then compare live
+        run: python3 scripts/check_live_baseline.py --mode migration --unchanged-from baseline-source --base-url "https://tomic-bau.de/" --approved-inventory "${{ runner.temp }}/approved-public-inventory.json"

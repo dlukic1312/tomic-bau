@@ -5,3 +5,6 @@
 - [Static validation](scripts/check_site.py)
 - [Browser validation](scripts/check_browser.cjs)
 - [Deployment workflow](.github/workflows/deploy-pages.yml)
+- [Staged links/resources/navigation validation](scripts/check_staged.py)
+- [Publication contract tests](tests/test_publication.py)
+- [Explicit unchanged-migration audit](.github/workflows/verify-migration.yml)
